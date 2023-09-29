@@ -246,6 +246,39 @@ INDEXED VIEWS
 """
 
 """
+BUTTON EDITING
+"""
+
+# New class for editable buttons | Only sends message when button is selected
+class EditableButton(discord.ui.Button):
+    def __init__(self, original_button, original_message):
+        super().__init__(
+            label=original_button.label,
+            style=original_button.style,
+            emoji=original_button.emoji,
+            custom_id=f'edit_{original_button.custom_id}',
+        )
+        self.original_message = original_message
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message(
+            f"You selected the {self.label} button for editing.",
+            ephemeral=True
+        )
+
+# Original buttons to EditableButton
+class ButtonEditView(discord.ui.View):
+    def __init__(self, existing_buttons, original_message):
+        super().__init__(timeout=None)
+        for button in existing_buttons:
+            # Create a new EditableButton for each existing button
+            self.add_item(EditableButton(button, original_message))
+
+
+"""
+BUTTON CREATION
+"""
+"""
 Page 1: Input role ID
 """
 
@@ -568,7 +601,6 @@ class ConfirmConfigView(View):
         initial_view = ChooseRoleView(self.button_data)
         print('Going back to the beginning')
         await interaction.response.edit_message(embed=embed, view=initial_view)
-
 
 
 """

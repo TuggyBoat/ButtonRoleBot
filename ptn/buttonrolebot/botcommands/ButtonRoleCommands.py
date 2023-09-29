@@ -26,7 +26,7 @@ from ptn.buttonrolebot.classes.EmbedData import EmbedData
 
 # local views
 from ptn.buttonrolebot.ui_elements.EmbedCreator import EmbedGenButtons
-from ptn.buttonrolebot.ui_elements.ButtonConfig import ChooseRoleView
+from ptn.buttonrolebot.ui_elements.ButtonConfig import ChooseRoleView, ButtonEditView
 from ptn.buttonrolebot.ui_elements.ButtonRemove import ConfirmRemoveButtonsView
 
 # local modules
@@ -42,28 +42,29 @@ A primitive global error handler for text commands.
 returns: error message to user and log
 """
 
+
 @bot.listen()
 async def on_command_error(ctx, error):
     print(error)
     if isinstance(error, commands.BadArgument):
-        message=f'Bad argument: {error}'
+        message = f'Bad argument: {error}'
 
     elif isinstance(error, commands.CommandNotFound):
-        message=f"Sorry, were you talking to me? I don't know that command."
+        message = f"Sorry, were you talking to me? I don't know that command."
 
     elif isinstance(error, commands.MissingRequiredArgument):
-        message=f"Sorry, that didn't work.\n• Check you've included all required arguments." \
-                 "\n• If using quotation marks, check they're opened *and* closed, and are in the proper place.\n• Check quotation" \
-                 " marks are of the same type, i.e. all straight or matching open/close smartquotes."
+        message = f"Sorry, that didn't work.\n• Check you've included all required arguments." \
+                  "\n• If using quotation marks, check they're opened *and* closed, and are in the proper place.\n• Check quotation" \
+                  " marks are of the same type, i.e. all straight or matching open/close smartquotes."
 
     elif isinstance(error, commands.MissingPermissions):
-        message='Sorry, you\'re missing the required permission for this command.'
+        message = 'Sorry, you\'re missing the required permission for this command.'
 
     elif isinstance(error, commands.MissingAnyRole):
-        message=f'You require one of the following roles to use this command:\n<@&{role_council()}> • <@&{role_mod()}>' # TODO: update with actual roles
+        message = f'You require one of the following roles to use this command:\n<@&{role_council()}> • <@&{role_mod()}>'  # TODO: update with actual roles
 
     else:
-        message=f'Sorry, that didn\'t work: {error}'
+        message = f'Sorry, that didn\'t work: {error}'
 
     embed = discord.Embed(description=f"❌ {message}", color=constants.EMBED_COLOUR_ERROR)
     await ctx.send(embed=embed)
@@ -74,6 +75,8 @@ CONTEXT COMMANDS
 Cannot be placed in a Cog
 Uses @bot.tree instead of @command.tree
 """
+
+
 # remove view from a bot message
 @bot.tree.context_menu(name='Remove Buttons')
 @check_roles(any_elevated_role)
@@ -113,7 +116,7 @@ async def add_role_button(interaction: discord.Interaction, message: discord.Mes
             await on_generic_error(spamchannel, interaction, e)
         return
 
-    try: 
+    try:
         # instantiate an empty instance of our RoleButtonData
         button_data = RoleButtonData()
         # add our message object
@@ -135,6 +138,39 @@ async def add_role_button(interaction: discord.Interaction, message: discord.Mes
             await on_generic_error(spamchannel, interaction, e)
 
 
+# edit buttons
+@bot.tree.context_menu(name='Edit Buttons')
+@check_roles(any_elevated_role)
+@check_channel_permissions()
+async def edit_role_buttons(interaction: discord.Interaction, message: discord.Message):
+    print(f"Received Edit Buttons context interaction from {interaction.user} in {interaction.channel}")
+
+    # check if message was sent by bot
+    if not message.author == bot.user:
+        try:
+            raise CustomError(f"Buttons can only be edited on messages sent by <@{bot.user.id}>")
+        except Exception as e:
+            await on_generic_error(spamchannel, interaction, e)
+        return
+
+    try:
+        message_view = discord.ui.View.from_message(message)
+        existing_buttons = [child for child in message_view.children if isinstance(child, discord.ui.Button)]
+        print(existing_buttons)
+
+        view = ButtonEditView(existing_buttons, message)
+        await interaction.response.send_message(
+            "Select the button you want to edit:",
+            view=view,
+            ephemeral=True
+        )
+
+
+    except Exception as e:
+        print(e)
+
+
+
 # edit sent embed
 @bot.tree.context_menu(name='Edit Bot Embed')
 @check_roles(any_elevated_role)
@@ -148,7 +184,7 @@ async def edit_bot_embed(interaction: discord.Interaction, message: discord.Mess
         except Exception as e:
             await on_generic_error(spamchannel, interaction, e)
         return
-    
+
     instruction_embed = discord.Embed(
         title='⚙ EDITING EMBED',
         color=constants.EMBED_COLOUR_QU
@@ -167,7 +203,7 @@ async def edit_bot_embed(interaction: discord.Interaction, message: discord.Mess
             'embed_author_avatar_url': embed.author.icon_url,
             'embed_color': embed.color
         }
-    
+
     # generate embed_data from the sent embed
     embed_data = EmbedData(embed_fields)
     print(embed_data)
@@ -180,10 +216,12 @@ async def edit_bot_embed(interaction: discord.Interaction, message: discord.Mess
 
     await interaction.response.send_message(embeds=embeds, view=view, ephemeral=True)
 
+
 """
 BRB COMMANDS COG
 
 """
+
 
 # define the Cog we'll use for our mod commands
 class ButtonRoleCommands(commands.Cog):
@@ -203,7 +241,6 @@ class ButtonRoleCommands(commands.Cog):
         tree = self.bot.tree
         tree.on_error = self._old_tree_error
 
-
     """
     BRB COMMANDS
     """
@@ -212,10 +249,10 @@ class ButtonRoleCommands(commands.Cog):
     @app_commands.command(
         name="send_embed",
         description="Prepare an Embed to send to this channel. This can be used to attach role buttons to."
-        )
+    )
     @check_roles(any_elevated_role)
     @check_channel_permissions()
-    async def _send_embed(self, interaction:  discord.Interaction):
+    async def _send_embed(self, interaction: discord.Interaction):
         print(f"{interaction.user.name} used /send_embed in {interaction.channel.name}")
 
         instruction_embed = discord.Embed(
@@ -237,5 +274,3 @@ class ButtonRoleCommands(commands.Cog):
         embeds = [instruction_embed, preview_embed]
 
         await interaction.response.send_message(embeds=embeds, view=view, ephemeral=True)
-
-
